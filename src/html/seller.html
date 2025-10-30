@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seller - Add Item</title>
+    <script src="js/vue.min.js"></script>
+    <script src="js/axios.min.js"></script>
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Page Container */
+        body {
+            background-color: #f0f2f5;
+            padding: 40px 20px;
+        }
+
+        /* Seller Header */
+        .seller-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .seller-title {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .user-greeting {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background-color: #f53f3f;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .logout-btn:hover {
+            background-color: #d43c33;
+        }
+
+        /* Add Item Card (Core Function: "add" API from doc) */
+        .add-item-card {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card-subtitle {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Form Group */
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        /* Form Input */
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4e6ef2;
+        }
+
+        .form-input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        /* Tip Message (Follows doc's API response logic: success/error) */
+        .tip {
+            height: 20px;
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .tip.success {
+            color: #00b42a;
+        }
+
+        .tip.error {
+            color: #f53f3f;
+        }
+
+        /* Add Item Button */
+        .add-item-btn {
+            width: 100%;
+            padding: 12px 0;
+            background-color: #4e6ef2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .add-item-btn:disabled {
+            background-color: #a3b7ff;
+            cursor: not-allowed;
+        }
+
+        .add-item-btn:hover:not(:disabled) {
+            background-color: #3a58d6;
+        }
+
+        /* Doc Rule Note (Explicitly reminds seller of auto-set fields, per "Api and logic.docx") */
+        .doc-rule-note {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #888;
+            text-align: center;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+<div id="sellerApp">
+    <!-- Seller Header (Shows username & Logout, matches modified login's token storage) -->
+    <div class="seller-header">
+        <div>
+            <h1 class="seller-title">Seller Dashboard</h1>
+            <p class="user-greeting">Welcome, {{ userName }}!</p>
+        </div>
+        <button class="logout-btn" @click="handleLogout">Logout</button>
+    </div>
+
+    <!-- Add Item Form (Core: Calls "add" API from "Api and logic.docx") -->
+    <div class="add-item-card">
+        <h2 class="card-title">Add New Item</h2>
+        <p class="card-subtitle">Only approved items (qualified=1) will be shown to buyers</p>
+
+        <form @submit.prevent="handleAddItem">
+            <!-- Item Name (Required by "add" API, per doc) -->
+            <div class="form-group">
+                <label for="itemName">Item Name</label>
+                <input
+                        type="text"
+                        id="itemName"
+                        v-model="itemData.name"
+                        class="form-input"
+                        placeholder="Enter item name (e.g., Organic Milk)"
+                        required
+                        :disabled="isLoading"
+                >
+            </div>
+
+            <!-- Item Price (Required by "add" API, per doc) -->
+            <div class="form-group">
+                <label for="itemPrice">Item Price ($)</label>
+                <input
+                        type="number"
+                        id="itemPrice"
+                        v-model="itemData.price"
+                        class="form-input"
+                        placeholder="Enter price (e.g., 4.99)"
+                        step="0.01"
+                        min="0"
+                        required
+                        :disabled="isLoading"
+                >
+            </div>
+
+            <!-- Dynamic Tip (Shows API response: success/error) -->
+            <p v-if="tipMessage" :class="['tip', tipType]">{{ tipMessage }}</p>
+
+            <!-- Add Item Button (Loading state binding) -->
+            <button type="submit" class="add-item-btn" :disabled="isLoading">
+                <span v-if="!isLoading">Add Item</span>
+                <span v-if="isLoading">Adding...</span>
+            </button>
+
+            <!-- Note: Auto-set fields per "Api and logic.docx" rule -->
+            <p class="doc-rule-note">
+                * System Rule (per doc):<br>
+                - "promotion" is auto-set to 0 (no promotion)<br>
+                - "qualified" is auto-set to 2 (pending admin review)
+            </p>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Initialize Vue2 App
+    new Vue({
+        el: '#sellerApp',
+        data: {
+            // Item data (matches "add" API request body in "Api and logic.docx")
+            itemData: {
+                name: '',
+                price: '',
+                promotion: 0,  // Auto-set to 0 (per doc)
+                qualified: 2   // Auto-set to 2 (per doc)
+            },
+            // User info (from modified login's localStorage: userName/role/token)
+            userName: '',
+            userRole: '',
+            userToken: '',
+            // Loading & Tip states
+            isLoading: false,
+            tipMessage: '',
+            tipType: ''  // "success" or "error"
+        },
+        mounted() {
+            // Step 1: Get user data from localStorage (matches modified login)
+            this.getUserDataFromLocalStorage();
+            // Step 2: Verify seller identity (per "Api and logic.docx" role rule)
+            this.verifySellerIdentity();
+        },
+        methods: {
+            // 1. Get user data (userName/userRole/userToken) from localStorage
+            getUserDataFromLocalStorage() {
+                this.userName = localStorage.getItem('userName') || '';
+                this.userRole = localStorage.getItem('userRole') || '';
+                this.userToken = localStorage.getItem('userToken') || '';
+            },
+
+            // 2. Verify only seller can access (per doc: "Seller: Only add items")
+            verifySellerIdentity() {
+                // Block access if not seller / no token (matches modified login's redirect logic)
+                if (this.userRole !== 'seller' || !this.userToken || !this.userName) {
+                    alert('Access Denied! Only sellers can enter this page.');
+                    // Redirect to login (consistent with modified login's URL structure)
+                    window.location.href = 'http://localhost:63343/Assignment1/src/html/login.html';
+                }
+            },
+
+            // 3. Handle Add Item: Call "add" API (per "Api and logic.docx")
+            async handleAddItem() {
+        // Basic validation: Price is valid number
+        const parsedPrice = parseFloat(this.itemData.price);
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
+            this.tipMessage = 'Please enter a valid non-negative price!';
+            this.tipType = 'error';
+            return;
+        }
+        // Update price to parsed number (avoid string in API request)
+        this.itemData.price = parsedPrice;
+
+        // Set loading state
+        this.isLoading = true;
+        this.tipMessage = '';
+
+        try {
+            // Call "add" API (URL follows doc's API structure)
+            const response = await axios({
+                method: 'POST',
+                url: 'http://localhost:8082/item/add',  // "add" API URL in doc
+                headers: {
+                    'Content-Type': 'application/json'  // Required by doc
+                },
+                data: this.itemData  // Request body (matches doc's "item" model)
+            });
+
+            // Handle API response (per doc's rule: data=1=success, data=0=failure)
+            const { code, msg, data } = response.data;
+            if (code === 200) {
+                if (data === 1) {
+                    // Success: Reset form + show tip (per doc's "add" success logic)
+                    this.tipMessage = 'Item added successfully! (Pending admin review)';
+                    this.tipType = 'success';
+                    this.resetItemForm();
+                } else {
+                    // Failure: Show error (per doc's "add" failure logic: data=0)
+                    this.tipMessage = msg || 'Failed to add item. Please try again.';
+                    this.tipType = 'error';
+                }
+            } else {
+                // Non-200 code: Network/Server error
+                this.tipMessage = 'Server error. Please try later.';
+                this.tipType = 'error';
+            }
+        } catch (error) {
+            // Network error handling
+            this.tipMessage = 'Network error. Check your connection.';
+            this.tipType = 'error';
+            console.error('"add" API Error (per "Api and logic.docx"):', error);
+        } finally {
+            // Reset loading state
+            this.isLoading = false;
+        }
+    },
+
+    // 4. Reset form after successful add
+    resetItemForm() {
+        this.itemData = {
+            name: '',
+            price: '',
+            promotion: 0,  // Keep auto-set values
+            qualified: 2
+        };
+    },
+
+    // 5. Logout: Clear localStorage + redirect to login (matches modified login's URL)
+    handleLogout() {
+        // Clear user data from localStorage
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userRole');
+        // Redirect to login page (same URL structure as modified login)
+        window.location.href = 'login.html';
+    }
+    }
+    });
+</script>
+</body>
+</html>

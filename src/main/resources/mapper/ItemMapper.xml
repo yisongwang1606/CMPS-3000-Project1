@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zb.mapper.ItemMapper">
+
+    <resultMap id="itemResultMap" type="com.zb.entity.Item">
+    </resultMap>
+
+    <select id="getPriceList" resultMap="itemResultMap">
+        select * from price_list
+        <where>
+            qualified = '1'
+            <if test="name != null">
+                and name = #{name}
+            </if>
+        </where>
+    </select>
+
+    <select id="getItemList" resultMap="itemResultMap">
+        select * from price_list
+        <where>
+            <if test="name != null">
+                and name = #{name}
+            </if>
+            <if test="qualified != null">
+                and qualified = #{qualified}
+            </if>
+        </where>
+    </select>
+
+
+    <insert id="addItem" parameterType="com.zb.entity.Item">
+        insert into price_list values(#{name},#{price},#{promotion},#{qualified})
+    </insert>
+
+    <delete id="deleteItem" parameterType="string">
+        delete from price_list
+        <where>
+            name = #{name}
+        </where>
+    </delete>
+
+    <update id="updateItem" parameterType="com.zb.entity.Item">
+        update price_list
+        <set>
+            <if test="name!=null and name!=''">
+                name = #{name},
+            </if>
+            <if test="price!=null and price!=''">
+                price = #{price},
+            </if>
+            <if test="promotion!=null and promotion!=''">
+                promotion = #{promotion},
+            </if>
+            <if test="qualified!=null and qualified!=''">
+                qualified = #{qualified},
+            </if>
+        </set>
+        <where>
+            name = #{name}
+        </where>
+    </update>
+
+</mapper>

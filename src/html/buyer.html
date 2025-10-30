@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buyer - Shopping Page</title>
+    <script src="js/vue.min.js"></script>
+    <script src="js/axios.min.js"></script>
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Page Container */
+        body {
+            background-color: #f0f2f5;
+            padding: 20px;
+        }
+
+        /* Buyer Header (No balance display: per doc adjustment) */
+        .buyer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .buyer-title {
+            color: #333;
+            font-size: 20px;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background-color: #f53f3f;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .logout-btn:hover {
+            background-color: #d43c33;
+        }
+
+        /* Main Content: Price List (qualified=1) + Cart */
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        /* Price List Card (uses priceList API: qualified=1 items per doc) */
+        .price-list-card, .cart-card {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* Price List Items */
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .item-card {
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+            transition: box-shadow 0.3s;
+        }
+
+        .item-card:hover {
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .item-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .item-price {
+            color: #f53f3f;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .promotion-tag {
+            font-size: 12px;
+            color: #00b42a;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .add-to-cart-btn {
+            width: 100%;
+            padding: 8px 0;
+            background-color: #4e6ef2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .add-to-cart-btn:hover {
+            background-color: #3a58d6;
+        }
+
+        /* Cart Card (uses total & buy APIs per doc) */
+        .cart-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .cart-item-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cart-item-name {
+            color: #333;
+        }
+
+        .cart-item-qty {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .remove-btn {
+            color: #f53f3f;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Membership Checkbox (per doc's total API "membershipStatus" param) */
+        .membership-section {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .membership-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        /* Total & Buy Button Area */
+        .total-buy-area {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .total-btn {
+            padding: 10px 0;
+            background-color: #4e6ef2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .total-btn:hover {
+            background-color: #3a58d6;
+        }
+
+        .total-display {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 500;
+            color: #f53f3f;
+            padding: 10px 0;
+            border: 1px dashed #eee;
+            border-radius: 4px;
+        }
+
+        .buy-btn {
+            padding: 12px 0;
+            background-color: #00b42a;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: none; /* Hidden until total is calculated */
+        }
+
+        .buy-btn.show {
+            display: block;
+        }
+
+        .buy-btn:disabled {
+            background-color: #87e898;
+            cursor: not-allowed;
+        }
+
+        /* Tip & Loading States (per doc's API response: 1=success, 0=failure) */
+        .tip {
+            text-align: center;
+            font-size: 14px;
+            margin: 10px 0;
+            height: 20px;
+        }
+
+        .tip.success {
+            color: #00b42a;
+        }
+
+        .tip.error {
+            color: #f53f3f;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 10px 0;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div id="buyerApp">
+    <!-- Buyer Header (No balance display: per doc adjustment) -->
+    <div class="buyer-header">
+        <h1 class="buyer-title">Buyer Shopping Page</h1>
+        <button class="logout-btn" @click="handleLogout">Logout</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Price List (qualified=1 items: per priceList API in doc) -->
+        <div class="price-list-card">
+            <h2 class="card-header">Available Items (Qualified = 1)</h2>
+            <p v-if="isLoadingItems" class="loading">Loading items...</p>
+            <p v-else-if="priceList.length === 0" class="tip error">No available items (only qualified=1 items show)</p>
+
+            <div v-else class="item-grid">
+                <div class="item-card" v-for="(item, index) in priceList" :key="index">
+                    <div class="item-name">{{ item.name }}</div>
+                    <div class="item-price">$ {{ item.price.toFixed(2) }}</div>
+                    <!-- Promotion: Dollar amount (per doc's adjusted rule) -->
+                    <span v-if="item.promotion > 0" class="promotion-tag">
+                            Promotion: ${{ item.promotion.toFixed(2) }} Off (Member Only)
+                        </span>
+                    <button class="add-to-cart-btn" @click="addToCart(item)">Add to Cart</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shopping Cart (uses total & buy APIs: per doc's flow + membership) -->
+        <div class="cart-card">
+            <h2 class="card-header">My Shopping Cart</h2>
+            <p v-if="cart.length === 0" class="tip">Your cart is empty</p>
+
+            <div v-else>
+                <div class="cart-list">
+                    <div class="cart-item" v-for="(cartItem, index) in cart" :key="index">
+                        <div class="cart-item-details">
+                            <div class="cart-item-name">{{ cartItem.name }}</div>
+                            <div class="cart-item-qty">Qty: {{ cartItem.qty }}</div>
+                        </div>
+                        <button class="remove-btn" @click="removeFromCart(index)">×</button>
+                    </div>
+                </div>
+
+                <!-- Membership Checkbox (per doc's total API "membershipStatus" param) -->
+                <div class="membership-section">
+                    <input
+                            type="checkbox"
+                            id="membership"
+                            class="membership-checkbox"
+                            v-model="isMember"
+                            @change="resetTotalState"
+                    >
+                    <label for="membership">I am a Member (Apply Promotion Discount)</label>
+                </div>
+            </div>
+
+            <!-- Total Button & Display (triggers total API per doc) -->
+            <div class="total-buy-area">
+                <button
+                        class="total-btn"
+                        :disabled="cart.length === 0 || isCalculatingTotal"
+                        @click="callTotalAPI"
+                >
+                    <span v-if="!isCalculatingTotal">Calculate Total (Call total API)</span>
+                    <span v-if="isCalculatingTotal" class="loading">Calculating...</span>
+                </button>
+
+                <!-- Total Price Display (shows total API result) -->
+                <div v-if="showTotal" class="total-display">
+                    Final Total (from total API): $ {{ apiFinalTotal.toFixed(2) }}
+                    <span v-if="isMember" style="display:block; font-size:12px; color:#00b42a; margin-top:5px;">
+                            Member discount applied (per total API)
+                        </span>
+                </div>
+
+                <!-- Tip: Shows API results (total/buy) -->
+                <p v-if="tipMessage" :class="['tip', tipType]">{{ tipMessage }}</p>
+
+                <!-- Buy Button (shows after total calculation; triggers buy API per doc) -->
+                <button
+                        class="buy-btn"
+                        :class="{ show: showTotal }"
+                        :disabled="isProcessingBuy"
+                        @click="callBuyAPI"
+                >
+                    <span v-if="!isProcessingBuy">Buy Now (Call buy API)</span>
+                    <span v-if="isProcessingBuy" class="loading">Processing...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#buyerApp',
+        data: {
+            // User data (from login token: per doc's token format)
+            userName: '',
+            userRole: '',
+            // Price List (from priceList API: qualified=1 items per doc)
+            priceList: [],
+            isLoadingItems: false,
+            // Shopping Cart (stores items added by buyer)
+            cart: [],
+            // Membership (per doc's total API "membershipStatus" param: true/false)
+            isMember: false,
+            // Total API related (per doc: calculate total via API only)
+            isCalculatingTotal: false,
+            showTotal: false,
+            apiFinalTotal: 0, // Total price returned by total API
+            // Buy API related (per doc: 1=success, 0=failure)
+            isProcessingBuy: false,
+            // Tip message (for API feedback)
+            tipMessage: '',
+            tipType: '' // "success" / "error"
+        },
+        mounted() {
+            // 1. Verify buyer identity (per doc: only buyer can access)
+            this.verifyBuyerRole();
+            // 2. Load qualified=1 items via priceList API (doc rule)
+            this.loadPriceList();
+        },
+        methods: {
+            // 1. Verify only buyer can access (per "Api and logic.docx")
+            verifyBuyerRole() {
+                this.userRole = localStorage.getItem('userRole') || '';
+                this.userName = localStorage.getItem('userName') || '';
+                const userToken = localStorage.getItem('userToken') || '';
+
+                if (this.userRole !== 'buyer' || !userToken || !this.userName) {
+                    alert('Access Denied! Only buyers can enter (per system rule).');
+                    window.location.href = 'http://localhost:63343/Assignment1/src/html/login.html';
+                }
+            },
+
+            // 2. Load priceList (only qualified=1 items: per "Api and logic.docx")
+            async loadPriceList() {
+        this.isLoadingItems = true;
+        try {
+            const response = await axios({
+                method: 'GET',
+                url: 'http://localhost:8082/item/priceList?name=null', // priceList API URL (doc)
+            });
+
+            // Handle priceList API response (per doc's format)
+            const { code, data } = response.data;
+            if (code === 200 && Array.isArray(data)) {
+                this.priceList = data; // Data is qualified=1 items (doc rule)
+            } else {
+                this.priceList = [];
+                this.tipMessage = 'Failed to load items (per priceList API)';
+                this.tipType = 'error';
+            }
+        } catch (error) {
+            this.priceList = [];
+            this.tipMessage = 'Network error: Failed to load price list';
+            this.tipType = 'error';
+            console.error('priceList API Error (per doc):', error);
+        } finally {
+            this.isLoadingItems = false;
+        }
+    },
+
+    // 3. Add item to cart (prep data for total API)
+    addToCart(item) {
+        const existingItem = this.cart.find(cartItem => cartItem.name === item.name);
+        if (existingItem) {
+            existingItem.qty += 1;
+        } else {
+            // Store item data matching total API's "count" structure (per doc)
+            this.cart.push({
+                name: item.name,
+                price: item.price,
+                promotion: item.promotion || 0, // Dollar discount (per doc)
+                qty: 1 // "count" field in total API (per doc's sendData model)
+            });
+        }
+        // Reset total state when cart changes
+        this.resetTotalState();
+    },
+
+    // 4. Remove item from cart
+    removeFromCart(index) {
+        this.cart.splice(index, 1);
+        // Reset total state when cart changes
+        this.resetTotalState();
+    },
+
+    // 5. Reset total state (when cart/membership changes)
+    resetTotalState() {
+        this.showTotal = false;
+        this.apiFinalTotal = 0;
+        this.tipMessage = '';
+    },
+
+    // 6. Call total API (with membership: per doc's "sendData" model)
+    async callTotalAPI() {
+        this.isCalculatingTotal = true;
+        this.tipMessage = '';
+
+        try {
+            // Total API request (per doc's sendData model: 1 object + 1 value)
+            const response = await axios({
+                method: 'POST',
+                url: 'http://localhost:8082/item/total', // total API URL (doc)
+                headers: { 'Content-Type': 'application/json' },
+                data: {
+                    // "count" object: matches doc's "sendData.count" structure
+                    count: this.cart.map(item => ({
+                        count: item.qty, // "count" field (per doc's example)
+                        name: item.name,
+                        price: item.price,
+                        promotion: item.promotion
+                    })),
+                // "membershipStatus" value: per doc's sendData model (true/false string)
+                membershipStatus: this.isMember.toString()
+        }
+        });
+
+            // Handle total API response (per doc's format)
+            const { code, data: apiTotal } = response.data;
+            if (code === 200 && typeof apiTotal === 'number') {
+                this.apiFinalTotal = apiTotal;
+                this.showTotal = true;
+                this.tipMessage = `Total calculated successfully (${this.isMember ? 'Member discount applied' : 'No member discount'})`;
+                this.tipType = 'success';
+            } else {
+                this.showTotal = false;
+                this.tipMessage = 'Failed to calculate total (per total API)';
+                this.tipType = 'error';
+            }
+        } catch (error) {
+            this.showTotal = false;
+            this.tipMessage = 'Network error: Failed to call total API';
+            this.tipType = 'error';
+            console.error('total API Error (per doc):', error);
+        } finally {
+            this.isCalculatingTotal = false;
+        }
+    },
+
+    // 7. Call buy API (per doc: 1=success, 0=failure; balance handled in API)
+    async callBuyAPI() {
+        this.isProcessingBuy = true;
+        this.tipMessage = '';
+
+        try {
+            // Buy API request (per doc's GET /user/buy with query params)
+            const response = await axios({
+                method: 'GET',
+                url: 'http://localhost:8082/user/buy', // buy API URL (doc)
+                params: {
+                    totalPrice: this.apiFinalTotal, // Total from total API (per doc)
+                    username: this.userName // Buyer username (per doc)
+                }
+            });
+
+            // Handle buy API response (per doc: 1=success, 0=failure)
+            const { code, data: buyResult } = response.data;
+            if (code === 200) {
+                if (buyResult === 1) {
+                    alert('Purchase success! (buy API returns 1)')
+                    this.tipMessage = 'Purchase success! (buy API returns 1)';
+                    this.tipType = 'success';
+                    // Clear cart and reset states after successful purchase
+                    this.cart = [];
+                    this.isMember = false;
+                    this.resetTotalState();
+                } else if (buyResult === 0) {
+                    alert('Purchase failed! (buy API returns 0)')
+                    this.tipMessage = 'Purchase failed! (buy API returns 0)';
+                    this.tipType = 'error';
+                }
+            } else {
+                alert('Purchase failed! (buy API returns 0)')
+                this.tipMessage = 'Purchase failed! (buy API code≠200)';
+                this.tipType = 'error';
+            }
+        } catch (error) {
+            this.tipMessage = 'Network error: Failed to call buy API';
+            this.tipType = 'error';
+            console.error('buy API Error (per doc):', error);
+        } finally {
+            this.isProcessingBuy = false;
+        }
+    },
+
+    // 8. Logout (clear data: per doc's login logic)
+    handleLogout() {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userRole');
+        window.location.href = 'login.html';
+    }
+    }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Item Management</title>
+    <script src="js/vue.min.js"></script>
+    <script src="js/axios.min.js"></script>
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Page Container */
+        body {
+            background-color: #f0f2f5;
+            padding: 20px;
+        }
+
+        /* Admin Header */
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .admin-title {
+            color: #333;
+            font-size: 20px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .admin-greeting {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background-color: #f53f3f;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .logout-btn:hover {
+            background-color: #d43c33;
+        }
+
+        /* Search & Filter Section (for itemList API) */
+        .search-filter {
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .search-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .search-input, .qualified-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 200px;
+        }
+
+        .search-btn {
+            padding: 8px 16px;
+            background-color: #4e6ef2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            align-self: flex-end;
+            transition: background-color 0.3s;
+        }
+
+        .search-btn:hover {
+            background-color: #3a58d6;
+        }
+
+        /* Item List Table (for itemList API data) */
+        .item-table-container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .item-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table-header {
+            background-color: #f5f7fa;
+            text-align: left;
+        }
+
+        .table-header th {
+            padding: 12px 20px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table-body td {
+            padding: 12px 20px;
+            color: #666;
+            font-size: 14px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .qualified-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-0 {
+            background-color: #ffebe6;
+            color: #f53f3f;
+        }
+
+        .badge-1 {
+            background-color: #e6ffed;
+            color: #00b42a;
+        }
+
+        .badge-2 {
+            background-color: #fff2e6;
+            color: #ff7d00;
+        }
+
+        /* Action Buttons (update/delete API triggers) */
+        .action-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .update-btn {
+            background-color: #fff2e6;
+            color: #ff7d00;
+        }
+
+        .update-btn:hover {
+            background-color: #ffe6cc;
+        }
+
+        .delete-btn {
+            background-color: #ffebe6;
+            color: #f53f3f;
+        }
+
+        .delete-btn:hover {
+            background-color: #ffd9cc;
+        }
+
+        /* Modal (for update API) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            color: #333;
+            font-size: 18px;
+        }
+
+        .close-modal {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .modal-form-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .modal-form-input, .modal-form-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .modal-btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .cancel-modal-btn {
+            flex: 1;
+            padding: 8px 0;
+            background-color: #f5f5f5;
+            color: #666;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .confirm-update-btn {
+            flex: 1;
+            padding: 8px 0;
+            background-color: #4e6ef2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Tip & Loading States */
+        .tip {
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        .tip.success {
+            color: #00b42a;
+        }
+
+        .tip.error {
+            color: #f53f3f;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div id="adminApp">
+    <!-- Admin Header (matches modified login's localStorage) -->
+    <div class="admin-header">
+        <h1 class="admin-title">Admin - Item Management</h1>
+        <div class="user-info">
+            <p class="admin-greeting">Welcome, {{ userName }}!</p>
+            <button class="logout-btn" @click="handleLogout">Logout</button>
+        </div>
+    </div>
+
+    <!-- Search & Filter (for itemList API: search by name/qualified) -->
+    <div class="search-filter">
+        <div class="search-group">
+            <label class="search-label">Search by Item Name</label>
+            <input
+                    type="text"
+                    class="search-input"
+                    v-model="searchName"
+                    placeholder="Enter item name (or leave empty)"
+            >
+        </div>
+        <div class="search-group">
+            <label class="search-label">Filter by Qualified Status</label>
+            <select class="qualified-select" v-model="filterQualified">
+                <option value="">All Status</option>
+                <option value="0">0 - Denied (not shown)</option>
+                <option value="1">1 - Approved (shown)</option>
+                <option value="2">2 - Pending (not shown)</option>
+            </select>
+        </div>
+        <button class="search-btn" @click="fetchItemList">Search Items</button>
+    </div>
+
+    <!-- Item List Table (renders itemList API data) -->
+    <div class="item-table-container">
+        <table class="item-table">
+            <thead class="table-header">
+            <tr>
+                <th>Item Name</th>
+                <th>Price ($)</th>
+                <th>Promotion</th>
+                <th>Qualified Status</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody class="table-body">
+            <tr v-if="isLoadingItems" colspan="5">
+                <td class="loading" colspan="5">Loading items...</td>
+            </tr>
+            <tr v-else-if="itemList.length === 0">
+                <td class="tip error" colspan="5">No items found (try adjusting search/filter)</td>
+            </tr>
+            <tr v-else v-for="(item, index) in itemList" :key="index">
+                <td>{{ item.name }}</td>
+                <td>{{ item.price.toFixed(2) }}</td>
+                <td>{{ item.promotion > 0 ? `${item.promotion}% Off` : "No Promotion" }}</td>
+                <td>
+                            <span :class="['qualified-badge', `badge-${item.qualified}`]">
+                                {{ item.qualified }} - {{ getQualifiedText(item.qualified) }}
+                            </span>
+                </td>
+                <td>
+                    <button class="action-btn update-btn" @click="openUpdateModal(item)">Update</button>
+                    <button class="action-btn delete-btn" @click="handleDeleteItem(item.name)">Delete</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Update Modal (for update API) -->
+    <div class="modal-overlay" v-if="showUpdateModal" @click="closeUpdateModal">
+        <div class="modal" @click.stop>
+            <div class="modal-header">
+                <h3 class="modal-title">Update Item - {{ updateItem.name }}</h3>
+                <button class="close-modal" @click="closeUpdateModal">&times;</button>
+            </div>
+            <form class="modal-form" @submit.prevent="confirmUpdateItem">
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Item Name (Read-only)</label>
+                    <input
+                            type="text"
+                            class="modal-form-input"
+                            v-model="updateItem.name"
+                            readonly
+                    >
+                </div>
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Price ($)</label>
+                    <input
+                            type="number"
+                            class="modal-form-input"
+                            v-model="updateItem.price"
+                            step="0.01"
+                            min="0"
+                            required
+                    >
+                </div>
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Promotion (%)</label>
+                    <input
+                            type="number"
+                            class="modal-form-input"
+                            v-model="updateItem.promotion"
+                            min="0"
+                            max="100"
+                            required
+                    >
+                </div>
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Qualified Status</label>
+                    <select class="modal-form-select" v-model="updateItem.qualified" required>
+                        <option value="0">0 - Denied (not shown to buyers)</option>
+                        <option value="1">1 - Approved (shown to buyers)</option>
+                        <option value="2">2 - Pending (not shown to buyers)</option>
+                    </select>
+                </div>
+                <div class="modal-btn-group">
+                    <button class="cancel-modal-btn" @click="closeUpdateModal">Cancel</button>
+                    <button class="confirm-update-btn" :disabled="isUpdating">
+                        <span v-if="!isUpdating">Confirm Update</span>
+                        <span v-if="isUpdating">Updating...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Vue2 App
+    new Vue({
+        el: '#adminApp',
+        data: {
+            // User info (from modified login's localStorage)
+            userName: '',
+            userRole: '',
+            userToken: '',
+            // Item List (from itemList API)
+            itemList: [],
+            isLoadingItems: false,
+            searchName: null,
+            filterQualified: null,
+            // Update Modal (for update API)
+            showUpdateModal: false,
+            updateItem: { name: '', price: 0, promotion: 0, qualified: 0 },
+            isUpdating: false,
+            // Delete State
+            isDeleting: false,
+            
+        },
+        mounted() {
+            // Step 1: Get user data from localStorage (matches modified login)
+            this.getUserDataFromLocalStorage();
+            // Step 2: Verify admin identity (per "Api and logic.docx" rule)
+            this.verifyAdminIdentity();
+            // Step 3: Fetch initial item list (all items)
+            this.fetchItemList();
+        },
+        methods: {
+            // 1. Get user data from localStorage (name/role/token)
+            getUserDataFromLocalStorage() {
+                this.userName = localStorage.getItem('userName') || '';
+                this.userRole = localStorage.getItem('userRole') || '';
+                this.userToken = localStorage.getItem('userToken') || '';
+            },
+
+            // 2. Verify only admin can access (per doc: "Admin: Modify and delete items")
+            verifyAdminIdentity() {
+                if (this.userRole !== 'admin' || !this.userToken || !this.userName) {
+                    alert('Access Denied! Only admins can enter this page.');
+                    // Redirect to login (same URL as modified login)
+                    window.location.href = 'http://localhost:63343/Assignment1/src/html/login.html';
+                }
+            },
+
+            // 3. Fetch item list via itemList API (per doc: GET /item/itemList)
+            async fetchItemList() {
+        this.isLoadingItems = true;
+        try {
+            const response = await axios({
+                method: 'GET',
+                url: 'http://localhost:8082/item/itemList?name='+this.searchName+'&qualified='+this.filterQualified,  // itemList API URL (doc)
+
+            });
+
+            // Handle itemList API response (per doc's format)
+            const { code, msg, data } = response.data;
+            if (code === 200 && Array.isArray(data)) {
+                this.itemList = data;
+            } else {
+                this.itemList = [];
+                alert('Failed to fetch items. Please try again.');
+            }
+        } catch (error) {
+            this.itemList = [];
+            alert('Network error: Failed to fetch items.');
+            console.error('itemList API Error (per doc):', error);
+        } finally {
+            this.isLoadingItems = false;
+        }
+    },
+
+    // 4. Open update modal (pre-fill item data)
+    openUpdateModal(item) {
+        // Deep copy to avoid modifying original item
+        this.updateItem = JSON.parse(JSON.stringify(item));
+        this.showUpdateModal = true;
+    },
+
+    // 5. Close update modal
+    closeUpdateModal() {
+        this.showUpdateModal = false;
+        this.isUpdating = false;
+    },
+
+    // 6. Confirm update via update API (per doc: POST /item/update)
+    async confirmUpdateItem() {
+        // Basic validation: Price is valid
+        const parsedPrice = parseFloat(this.updateItem.price);
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
+            alert('Please enter a valid non-negative price!');
+            return;
+        }
+        this.updateItem.price = parsedPrice;
+
+        this.isUpdating = true;
+        try {
+            const response = await axios({
+                method: 'POST',
+                url: 'http://localhost:8082/item/update',  // update API URL (doc)
+                headers: { 'Content-Type': 'application/json' },
+                data: this.updateItem  // Request body (matches doc's "item" model)
+            });
+
+            // Handle update API response (per doc: data=1=success)
+            const { code, data } = response.data;
+            if (code === 200 && data === 1) {
+                alert('Item updated successfully!');
+                this.closeUpdateModal();
+                this.fetchItemList();  // Refresh item list
+            } else {
+                alert('Failed to update item. Please try again.');
+            }
+        } catch (error) {
+            alert('Network error: Failed to update item.');
+            console.error('update API Error (per doc):', error);
+        } finally {
+            this.isUpdating = false;
+        }
+    },
+
+    // 7. Delete item via delete API (per doc: DELETE /item/delete)
+    async handleDeleteItem(itemName) {
+        if (!confirm(`Are you sure to delete item: ${itemName}?`)) {
+            return;
+        }
+
+        this.isDeleting = true;
+        try {
+            const response = await axios({
+                method: 'DELETE',
+                url: 'http://localhost:8082/item/delete',  // delete API URL (doc)
+                params: { name: itemName }  // Required: item name (doc)
+            });
+
+            // Handle delete API response (per doc: data=1=success)
+            const { code, data } = response.data;
+            if (code === 200 && data === 1) {
+                alert(`Item "${itemName}" deleted successfully!`);
+                this.fetchItemList();  // Refresh item list
+            } else {
+                alert(`Failed to delete item "${itemName}".`);
+            }
+        } catch (error) {
+            alert('Network error: Failed to delete item.');
+            console.error('delete API Error (per doc):', error);
+        } finally {
+            this.isDeleting = false;
+        }
+    },
+
+    // 8. Logout: Clear localStorage + redirect to login
+    handleLogout() {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userRole');
+        window.location.href = 'login.html';
+    },
+
+    // 9. Helper: Get qualified status text (per doc's definition)
+    getQualifiedText(qualified) {
+        const statusMap = {
+            0: 'Denied',
+            1: 'Approved',
+            2: 'Pending'
+        };
+        return statusMap[qualified] || 'Unknown';
+    }
+    }
+    });
+</script>
+</body>
+</html>

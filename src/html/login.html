@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Login</title>
+    <script src="js/vue.min.js"></script>
+    <script src="js/axios.min.js"></script>
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Page Container */
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Login Card */
+        .login-card {
+            background-color: #fff;
+            padding: 40px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 420px;
+        }
+
+        /* Login Title */
+        .login-title {
+            text-align: center;
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 30px;
+        }
+
+        /* Form Group */
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        /* Form Input */
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4e6ef2;
+        }
+
+        .form-input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        /* Tip Message (For login success/error, per doc's response logic) */
+        .tip {
+            height: 20px;
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .tip.success {
+            color: #00b42a;
+        }
+
+        .tip.error {
+            color: #f53f3f;
+        }
+
+        /* Login Button */
+        .login-btn {
+            width: 100%;
+            padding: 12px 0;
+            background-color: #4e6ef2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .login-btn:disabled {
+            background-color: #a3b7ff;
+            cursor: not-allowed;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            background-color: #3a58d6;
+        }
+    </style>
+</head>
+<body>
+<div id="loginApp" class="login-card">
+    <h2 class="login-title">System Login</h2>
+    <!-- Login Form (Matches "login" API in "Api and logic.docx") -->
+    <form @submit.prevent="submitLogin">
+        <!-- Username Input (Required by "login" API) -->
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input
+                    type="text"
+                    id="username"
+                    v-model="loginData.username"
+                    class="form-input"
+                    placeholder="Enter your username"
+                    required
+                    :disabled="isLoading"
+            >
+        </div>
+
+        <!-- Password Input (Required by "login" API) -->
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input
+                    type="password"
+                    id="password"
+                    v-model="loginData.password"
+                    class="form-input"
+                    placeholder="Enter your password"
+                    required
+                    :disabled="isLoading"
+            >
+        </div>
+
+        <!-- Status Tip (Binds to Vue data for dynamic feedback) -->
+        <p v-if="tipMessage" :class="['tip', tipType]">{{ tipMessage }}</p>
+
+        <!-- Login Button (Binds loading state to Vue data) -->
+        <button type="submit" class="login-btn" :disabled="isLoading">
+            <span v-if="!isLoading">Login</span>
+            <span v-if="isLoading">Logging in...</span>
+        </button>
+    </form>
+</div>
+
+<script>
+    // Initialize Vue App (Vue2)
+    new Vue({
+        el: '#loginApp',
+        data: {
+            // Login data (matches "login" API request body in "Api and logic.docx")
+            loginData: {
+                username: '',
+                password: ''
+            },
+            isLoading: false, // Loading state for button and inputs
+            tipMessage: '', // Dynamic tip text
+            tipType: '' // Tip type: 'success' or 'error'
+        },
+        methods: {
+            async submitLogin() {
+        // Basic validation (non-empty check, per API requirement)
+        if (!this.loginData.username.trim() || !this.loginData.password.trim()) {
+            this.tipMessage = 'Username and password cannot be empty!';
+            this.tipType = 'error';
+            return;
+        }
+
+        // Set loading state
+        this.isLoading = true;
+        this.tipMessage = '';
+
+        try {
+            // Call "login" API (URL and format from "Api and logic.docx")
+            const response = await axios({
+                method: 'POST',
+                url: 'http://localhost:8082/user/login', // API URL in doc
+                headers: {
+                    'Content-Type': 'application/json' // Request format in doc
+                },
+                data: this.loginData // Request body (matches doc's "loginData" model)
+            });
+
+            // Handle API response (follows doc's response rules)
+            const { code, msg, data } = response.data;
+            if (code === 200 && data != "null") {
+                // Login success: Token format (e.g., "Admin_Admin123l" / "Buyer_Jack_1500.0" per doc)
+                const token = data;
+                const name = token.split('_')[0];
+                const role = token.split('_')[1]; // Extract role (Admin/Seller/Buyer)
+                console.log(role)
+
+                // Store token and role (for subsequent pages, per doc's logic)
+                localStorage.setItem('userToken', token);
+                localStorage.setItem('userName', name);
+                localStorage.setItem('userRole', role);
+
+                // Show success tip
+                this.tipMessage = `Login success! Redirecting to ${role} page...`;
+                this.tipType = 'success';
+
+                // Simulate role-based redirect (per doc's role permissions)
+                setTimeout(() => {
+                    if (role === 'admin') {
+                    window.location.href = 'admin.html';
+                } else if (role === 'seller') {
+                    window.location.href = 'seller.html';
+                } else if (role === 'buyer') {
+                    window.location.href = 'buyer.html';
+                }
+            }, 1500);
+            } else {
+                // Login failed (e.g., wrong credentials, data is null per doc)
+                this.tipMessage = msg || 'Login failed! Please check your credentials.';
+                this.tipType = 'error';
+            }
+        } catch (error) {
+            // Network error handling
+            this.tipMessage = 'Login failed! Please check your credentials.';
+            this.tipType = 'error';
+            console.error('Login API Error (per "Api and logic.docx"):', error);
+        } finally {
+            // Reset loading state
+            this.isLoading = false;
+        }
+    }
+    }
+    });
+</script>
+</body>
+</html>
